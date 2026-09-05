@@ -9,10 +9,12 @@ def parse_message(file_path):
 
     message = Path(file_path).read_text(encoding="utf-8")
 
-    days = []
+    dates = [] # 다중 일정 
     year = 2026 # 향후 시스템 연도로 변경해야 함
-    start_time = None # 시작 시간
-    end_time = None # 종료 시간
+    start_hour = None
+    start_minute = None
+    end_hour = None
+    end_minute = None
     description_parts = [] # 메모
 
     # ================================================
@@ -32,89 +34,139 @@ def parse_message(file_path):
     # ================================================
     # 2. 날짜 추출
     # ================================================
-    # - 일정: 8월 24일(월)
-    # ▶일시: 8월 4일(화), 5일(수), 7일(금) 각 16:30시~20:30 (3회 필참)
-    # 교육일정: 7. 28.(화), 29.(수), 30.(목) 09:30~12:30
-    date_match = re.search(
-        r"\s*(\d{1,2}월\s*\d{1,2}일|\d{1,2}/\d{1,2}|\d{1,2}\.\s*\d{1,2}\.)",
+    day_line = re.search(
+        r"(?:일정|일시|교육일정):[^\r\n]*",
         message
+    )
+    
+    try:
+        day_text = day_line.group(0)
+
+    except :
+        print("\n❌ 일정 날짜을 읽을 수 없습니다.")
+        print("일정을 확인해주세요.")
+        return
+
+    # ~ 로 범위 일정
+    # 8. 20.(목)~8. 21.(금)
+    if "~" in day_text:
+        range_match = re.search(
+            r"(\d{1,2})\.\s*(\d{1,2})\.\s*.*?~\s*(\d{1,2})\.\s*(\d{1,2})\.",
+            day_text
+        )
+
+        if range_match:
+            start_month = int(range_match.group(1))
+            start_day = int(range_match.group(2))
+            end_month = int(range_match.group(3))
+            end_day = int(range_match.group(4))
+
+            start_date = datetime(
+                year, start_month, start_day      
+            )
+            
+            end_date = datetime(
+                year, end_month, end_day
+            )
+
+            dates.append(start_date)
+            dates.append(end_date)
+    
+    # . 으로 구분된 일정
+    # 7. 28.(화), 29.(수), 30.(목)
+    if "," in day_text:
+        dot_match = re.search(
+            r"(\d{1,2})\.\s*(\d{1,2})\.",        
+            day_text
+        )
+
+        if dot_match:
+            start_month = int(dot_match.group(1))
+            start_day = int(dot_match.group(2))
+
+            dates.append(datetime(year, start_month, start_day))
+
+            remaining_days = re.findall(
+                r",\s*(\d{1,2})\.",
+                day_text
+            )
+
+            for day in remaining_days:
+                dates.append(datetime(year, start_month, int(day)))
+
+    # / 구분된 일정
+    # 8/11, 8/18, 8/25
+    slash_match = re.findall(
+        r"(\d{1,2})/(\d{1,2})",
+        day_text
+    )
+
+    if slash_match:
+        for month, day in slash_match:
+            dates.append(timedate(year,month, day))
+
+    # 월일 구분
+    # 8월 4일(화), 5일(수), 7일(금) 각 16:30시~20:30 (3회 필참)
+    date_match = re.search(
+        r"\s*(\d{1,2})월\s*(\d{1,2})일",
+        day_text
     )
 
     if date_match:
-        date_text = date_match.group(1)
+        date_month = int(date_match.group(1))
+        date_day = int(date_match.group(2))
 
-        if "월" in date_text:
-            month, day = map(
-                int,
-                re.findall(r"\d+", date_text)
-            )
+        dates.append(datetime(year, date_month, date_day))
 
-        elif "/" in date_text:
-            month, day = map(
-                int,
-                date_text.split("/")
-            )
-        
-        elif "." in date_text:
-            month, day = map(
-                int,
-                re.findall(r"\d+", date_text)
-            )
+        remaining_days = re.findall(
+            r",\s*(\d{1,2})일",
+            day_text
+        )
 
-    # 다중 일정
-    #else:
-    #    month = int(date_match.group(1))
-    #    first_day = int(date_match.group(2))
-    #    second_day = int(date_match.group(3))
-    #    third_day = int(date_match.group(4))
-    #    days = [first_day, second_day, third_day]
+        for day in remaining_days:
+            dates.append( datetime(year, date_month, int(day)) )
+
 
     # ===============================================
     # 3. 시작/종료 시간 추출
     # ================================================
-    
-    # 10:00 ~ 13:00, 14:00 ~, 16:30시~20:30 
+     # 1. 16:30 ~ 20:30 구분 : 인 경우
     time_match = re.search(
-        r"(\d{1,2})(?::(\d{2}))?\s*시?\s*~\s*(\d{1,2})(?::(\d{2}))?\s*시?",
+        r"(\d{1,2}):(\d{2})?\s*~\s*(\d{1,2}):(\d{2})?",
         message
     )
 
     if time_match:
         start_hour = int(time_match.group(1))
         start_minute = int(time_match.group(2) or 0)
+        end_hour = int(time_match.group(3))
+        end_minute = int(time_match.group(4) or 0)
 
-        if time_match.group(3):
-            end_hour = int(time_match.group(3))
-            end_minute = int(time_match.group(4) or 0)
-        else:
-            end_hour = start_hour + 1
-            end_minute = start_minute
-            description_parts.append("종료시간 확인 필요")
-    
-    # ==============================================
-    # 4. datetime으로 변환
-    # ==============================================
-    start_datetime = datetime(
-        year,
-        month,
-        day,
-        start_hour,
-        start_minute
-    )
-
-    if end_time:
-        end_hour, end_minute = map(int, end_time.split(":"))
     else:
+        # 16시 ~ 17시 구분 시 인 경우
+        time_math = re.search(
+            r"(\d{1,2}\s*시\s*~\s*(\d{1,2})시",
+            message
+        )
+        start_hour = int(time_match.group(1))
+        start_minute = int(0)
+        end_hour = int(time_match.group(2))
+        end_minute = int(0)
+        
+    if not end_hour:
         end_hour = start_hour + 1
         end_minute = start_minute
         description_parts.append("종료시간 확인 필요")
+    
+    # datetime으로 변환
+    start_datetime = dates[0].replace(
+        hour = start_hour,
+        minute = start_minute
+    )
 
-    end_datetime = datetime(
-        2026,
-        month,
-        day,
-        end_hour,
-        end_minute
+    end_datetime = dates[0].replace(
+        hour = end_hour,
+        minute = end_minute
     )
 
     # ================================================
@@ -170,7 +222,7 @@ def parse_message(file_path):
     # ==================================================
     event = {
         "SUMMARY": title,
-        "DATE": start_datetime.strftime("%Y%m%d"),
+        "DATE": [ date.strftime("%Y%m%d") for date in dates ],
         "START_TIME": start_datetime.strftime("%H%M%S"),
         "END_TIME": end_datetime.strftime("%H%M%S"),
         "LOCATION": location,
