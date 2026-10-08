@@ -102,18 +102,32 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             document.getElementById("loading").style.display = "block";
             document.getElementById("resultContainer").style.display = "none";
 
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20초 요청 타임아웃 설정
+
             try {
                 const response = await fetch("/api/parse", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text })
+                    body: JSON.stringify({ text }),
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || "서버 처리 중 오류가 발생했습니다.");
+                }
 
                 const data = await response.json();
                 currentSchedules = data.schedules;
                 renderResults(currentSchedules);
             } catch (err) {
-                alert("일정 분석 중 오류가 발생했습니다: " + err.message);
+                if (err.name === 'AbortError') {
+                    alert("요청 시간이 초과되었습니다. 네트워크 연결 상태를 확인해주세요.");
+                } else {
+                    alert("일정 분석 중 오류가 발생했습니다: " + err.message);
+                }
             } finally {
                 document.getElementById("loading").style.display = "none";
             }
@@ -136,12 +150,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     ? `<span class="badge warning">⚠️ 검토 필요: ${item.review_reason || '확인 요망'}</span>`
                     : `<span class="badge">✅ ISO 규격 확인 완료</span>`;
 
+                let dateDisplay = item.date || item.date_iso || '미정';
+                let startDisplay = item.start_iso || item.start_time || '미정';
+                let endDisplay = item.end_iso || item.end_time || '미정';
+
                 card.innerHTML = `
                     ${reviewBadge}
                     <h3>${idx + 1}. ${item.summary || '제목 없음'}</h3>
-                    <div class="field"><span class="field-label">ISO 시작시각:</span> <span class="iso-tag">${item.start_iso || '미정'}</span></div>
-                    <div class="field"><span class="field-label">ISO 종료시각:</span> <span class="iso-tag">${item.end_iso || '미정'}</span></div>
-                    <div class="field"><span class="field-label">일정 날짜:</span> ${item.date_iso || '미정'}</div>
+                    <div class="field"><span class="field-label">ISO 시작시각:</span> <span class="iso-tag">${startDisplay}</span></div>
+                    <div class="field"><span class="field-label">ISO 종료시각:</span> <span class="iso-tag">${endDisplay}</span></div>
+                    <div class="field"><span class="field-label">일정 날짜:</span> ${dateDisplay}</div>
                     <div class="field"><span class="field-label">장소:</span> ${item.location || '미정'}</div>
                     <div class="field"><span class="field-label">메모/안내:</span> ${item.description || '없음'}</div>
                 `;
@@ -207,25 +225,41 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
 
         # 1. 문자 텍스트 ➔ AI 일정 정보 및 ISO 파싱 API
         if self.path == "/api/parse":
-            text = data.get("text", "")
-            schedules, _ = process_text_input(input_text=text)
-            
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.end_headers()
-            response_payload = json.dumps({"schedules": schedules}, ensure_ascii=False)
-            self.wfile.write(response_payload.encode("utf-8"))
+            try:
+                text = data.get("text", "")
+                schedules, _ = process_text_input(input_text=text)
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                response_payload = json.dumps({"schedules": schedules, "status": "success"}, ensure_ascii=False)
+                self.wfile.write(response_payload.encode("utf-8"))
+            except Exception as e:
+                print(f"[서버 오류] /api/parse 처리 실패: {e}")
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                err_payload = json.dumps({"error": str(e), "schedules": []}, ensure_ascii=False)
+                self.wfile.write(err_payload.encode("utf-8"))
 
         # 2. 일정 객체 ➔ .ics 캘린더 파일 생성 및 다운로드 API
         elif self.path == "/api/ics":
-            schedules = data.get("schedules", [])
-            ics_content = generate_ics_from_schedule(schedules)
-            
-            self.send_response(200)
-            self.send_header("Content-Type", "text/calendar; charset=utf-8")
-            self.send_header("Content-Disposition", "attachment; filename=schedule.ics")
-            self.end_headers()
-            self.wfile.write(ics_content.encode("utf-8"))
+            try:
+                schedules = data.get("schedules", [])
+                ics_content = generate_ics_from_schedule(schedules)
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "text/calendar; charset=utf-8")
+                self.send_header("Content-Disposition", "attachment; filename=schedule.ics")
+                self.end_headers()
+                self.wfile.write(ics_content.encode("utf-8"))
+            except Exception as e:
+                print(f"[서버 오류] /api/ics 처리 실패: {e}")
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                err_payload = json.dumps({"error": str(e)}, ensure_ascii=False)
+                self.wfile.write(err_payload.encode("utf-8"))
 
         else:
             self.send_error(404, "API 경로를 찾을 수 없습니다.")

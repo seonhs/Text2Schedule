@@ -48,8 +48,8 @@ def extract_schedule_from_text(
 
         client = genai.Client(api_key=api_key)
         
-        # 주 모델 호출 실패 시 대체 모델 순차 시도
-        models_to_try = [model_name, "gemini-2.5-flash", "gemini-3.5-flash-lite"]
+        # 주 모델 호출 실패 시 대체 모델 순차 시도 (중복 제거)
+        models_to_try = list(dict.fromkeys([model_name, "gemini-2.5-flash", "gemini-3.5-flash-lite"]))
         response = None
         last_err = None
 
