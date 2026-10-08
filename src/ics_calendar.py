@@ -38,7 +38,9 @@ def generate_ics_from_schedule(schedules: list[dict], prod_id: str = "-//GALAXY 
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        f"PRODID:{prod_id}"
+        f"PRODID:{prod_id}",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH"
     ]
 
     for idx, item in enumerate(schedules, 1):
@@ -82,4 +84,4 @@ def generate_ics_from_schedule(schedules: list[dict], prod_id: str = "-//GALAXY 
 
     lines.append("END:VCALENDAR")
     
-    return "\r\n".join(lines)
+    return "\r\n".join(lines) + "\r\n"

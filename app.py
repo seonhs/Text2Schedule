@@ -75,18 +75,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         <div id="resultContainer" style="display: none;">
             <div class="card">
-                <h2>🗓️ ISO 8601 일정 정보</h2>
+                <h2>🗓️ 추출된 일정 정보</h2>
                 <div id="scheduleCards" style="margin-top: 14px;"></div>
                 
                 <div class="btn-group">
                     <button class="success" onclick="downloadICS()">📥 .ics 캘린더 파일 다운로드 (핸드폰 등록용)</button>
-                    <button class="secondary" onclick="copyJSON()">📋 ISO JSON 복사</button>
                 </div>
-            </div>
-
-            <div class="card">
-                <h3>📄 원본 ISO 8601 JSON 데이터</h3>
-                <pre id="jsonPreview"></pre>
             </div>
         </div>
     </div>
@@ -168,7 +162,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 cardsDiv.appendChild(card);
             });
 
-            document.getElementById("jsonPreview").textContent = JSON.stringify(schedules, null, 2);
             document.getElementById("resultContainer").style.display = "block";
         }
 
@@ -179,22 +172,22 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ schedules: currentSchedules })
             })
-            .then(res => res.blob())
-            .then(blob => {
+            .then(res => res.arrayBuffer())
+            .then(buffer => {
+                const blob = new Blob([buffer], { type: "text/calendar;charset=utf-8" });
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
                 a.download = "schedule.ics";
                 document.body.appendChild(a);
                 a.click();
-                a.remove();
-            });
-        }
-
-        function copyJSON() {
-            const jsonText = JSON.stringify(currentSchedules, null, 2);
-            navigator.clipboard.writeText(jsonText).then(() => {
-                alert("ISO JSON 데이터가 클립보드에 복사되었습니다!");
+                setTimeout(() => {
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                }, 200);
+            })
+            .catch(err => {
+                alert("캘린더 파일 다운로드 중 오류가 발생했습니다: " + err.message);
             });
         }
     </script>
