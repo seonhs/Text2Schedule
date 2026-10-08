@@ -3,6 +3,8 @@ import socketserver
 import json
 import socket
 import urllib.parse
+import os
+import sys
 from src.parser import process_text_input
 from src.ics_calendar import generate_ics_from_schedule
 
@@ -275,16 +277,28 @@ def get_local_ip():
     except Exception:
         return "127.0.0.1"
 
-def run_web_server(port: int = 8000):
+def run_web_server(port: int = None):
     """모바일 웹 서버를 구동합니다."""
+    # Cloud 배포(Option 2: Render/Railway 등) 시 제공되는 PORT 환경변수 우선 적용
+    if port is None:
+        port = int(os.environ.get("PORT", 8000))
+
     handler = RequestHandler
     local_ip = get_local_ip()
+    
+    # 0.0.0.0 바인딩 (로컬 및 클라우드 외부 접속 모두 수신 가능)
     with socketserver.TCPServer(("", port), handler) as httpd:
         print("\n=======================================================")
-        print("🚀 Text2Schedule 모바일 웹 서버 실행 완료!")
+        print("🚀 Text2Schedule 웹 서버 구동 중 [옵션 1: TEST / 옵션 2: CLOUD 준비 완료]")
         print("=======================================================")
-        print(f"💻 PC 브라우저 접속:     http://localhost:{port}")
-        print(f"📱 스마트폰 접속(동일 Wi-Fi): http://{local_ip}:{port}")
+        print(f"💻 [PC 브라우저 접속]       http://localhost:{port}")
+        print(f"📱 [동일 Wi-Fi 스마트폰 접속] http://{local_ip}:{port}")
+        print("-------------------------------------------------------")
+        print("⚠️ 스마트폰(동일 Wi-Fi) 접속 불량 시 체크사항:")
+        print(" 1) 윈도우 방화벽 8000 포트 허용 (PowerShell 관리자 권한):")
+        print("    New-NetFirewallRule -DisplayName 'Text2Schedule Port 8000' -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow")
+        print(" 2) 외부(LTE/5G/밖에서) 테스트 시 터널링 명령어 사용:")
+        print("    npx localtunnel --port 8000")
         print("=======================================================\n")
         try:
             httpd.serve_forever()

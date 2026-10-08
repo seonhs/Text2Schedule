@@ -62,14 +62,34 @@ python main.py data/samples/sample_msg.txt
 python main.py
 ```
 
-### 2. 모바일 / 웹 UI 실행 (스마트폰 메시지 입력용)
+### 2. 모바일 / 웹 UI 실행 및 외부 접속 방법
+
+#### 📱 옵션 1: 로컬 & 동일 Wi-Fi 테스트 (Test 모드)
 ```bash
 python app.py
 # 또는
 python main.py --web
 ```
-- 실행 시 출력되는 모바일 접속 주소(예: `http://192.168.X.X:8000`)를 스마트폰 브라우저(크롬, 삼성 인터넷 등)에 입력합니다.
-- 휴대폰 문자를 복사하여 붙여넣고 **`⚡ AI 일정 분석 및 ISO 변환`** 클릭 후 **`.ics 다운로드`**를 터치하여 캘린더에 즉시 등록합니다.
+- **동일 Wi-Fi 접속**: 터미널에 출력되는 `http://[PC_사설_IP]:8000` 주소를 같은 Wi-Fi에 연결된 스마트폰 브라우저에 입력합니다.
+- **⚠️ 접속 시 로딩만 뜨거나 타임아웃 발생하는 경우 (윈도우 방화벽 해제)**:
+  PowerShell을 **관리자 권한**으로 실행한 후 아래 명령어로 8000번 포트를 허용합니다.
+  ```powershell
+  New-NetFirewallRule -DisplayName "Text2Schedule Port 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
+  ```
+- **외부(LTE/5G) 임시 터널링 접속**:
+  별도 방화벽 설정 없이 외부망에서 테스트하려면 다음 명령어(Node.js 필요)로 1초 만에 임시 HTTPS 링크를 생성할 수 있습니다.
+  ```bash
+  npx localtunnel --port 8000
+  ```
+
+#### 🌐 옵션 2: 무료 클라우드(Render.com) 배포 (LTE/5G 외부 상시 접속)
+PC를 꺼두어도 스마트폰으로 24시간 언제나 접속 가능하도록 Render.com 무료 클라우드에 배포합니다:
+1. 본 레포지토리를 GitHub에 Push합니다.
+2. [Render.com](https://render.com) 접속 및 로그인 후 **[New] ➔ [Web Service]** 선택
+3. GitHub 레포지토리 `Text2Schedule` 선택
+4. Render가 `Procfile` 및 `render.yaml`을 자동 인식합니다.
+5. **Environment Variables**에 `GEMINI_API_KEY` 환경변수 추가 후 **Deploy Web Service** 클릭
+6. 생성되는 `https://text2schedule.onrender.com` 주소로 외부 어디서나 스마트폰 접속 가능!
 
 ### 3. 단위 테스트 실행
 ```bash
