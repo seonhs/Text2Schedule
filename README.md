@@ -138,7 +138,8 @@ Text2Schedule/
 ├── src/
 │   ├── main.py            # CLI 보조 진입점
 │   ├── parser.py          # AI 분석 + ICS 생성 파이프라인
-│   ├── ai_service.py      # Gemini API 연동 및 Fallback 파서
+│   ├── ai_service.py      # Gemini API 연동 모듈
+│   ├── fallback_parser.py # API 장애 시 정규식 기반 Fallback 추출 파서
 │   ├── validator.py       # Pydantic v2 기반 단일 표준 검증/정규화
 │   └── ics_calendar.py    # 갤럭시 캘린더 규격 경량 .ics 생성기
 ├── data/
