@@ -1,3 +1,10 @@
 .env
-venv/*
-test/*
+venv/
+test/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+schedule.ics
+schedule_iso.json
