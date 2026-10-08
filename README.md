@@ -40,11 +40,11 @@ Text2Schedule은 교육, 행사, 프로그램 등의 안내 문자 메시지(SMS
 ### 2. 설치 (Installation)
 필수 라이브러리를 설치합니다.
 ```bash
-pip install google-genai pydantic python-dotenv
+pip install -r requirements.txt
 ```
 
 ### 3. 환경 변수 설정 (Environment Setup)
-프로젝트 루트 디렉터리에 `.env` 파일을 생성하고 발급받은 Gemini API 키를 작성합니다.
+프로젝트 루트 디렉터리에 `.env` 파일을 생성하고 발급받은 Gemini API 키를 작성합니다 (GitHub에 커밋되지 않도록 보안 관리됨).
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
@@ -175,17 +175,19 @@ END:VCALENDAR
 Text2Schedule/
 ├── main.py                # CLI 실행 및 모바일 웹 UI 구동 메인 진입점
 ├── app.py                 # 모바일 반응형 웹 UI 및 HTTP API 서버
+├── Procfile               # Heroku/Render/Railway 배포 프로세스 정의 파일
+├── render.yaml            # Render.com 자동 배포 청사진 정의 파일
 ├── prompt.md              # AI 일정 추출 메타 시스템 프롬프트
 ├── README.md              # 프로젝트 종합 가이드 문서 (본 파일)
-├── requirements.txt       # 필수 파이썬 패키지 목록
-├── .env                   # GEMINI_API_KEY 환경변수 설정 파일
+├── requirements.txt       # 필수 파이썬 패키지 목록 (최적화)
+├── .env                   # GEMINI_API_KEY 환경변수 설정 파일 (.gitignore 포함)
 ├── src/
 │   ├── main.py            # CLI 보조 진입점
 │   ├── parser.py          # AI 분석 + ICS 생성 파이프라인
 │   ├── ai_service.py      # Gemini API 연동 모듈
 │   ├── fallback_parser.py # API 장애 시 정규식 기반 Fallback 추출 파서
 │   ├── validator.py       # Pydantic v2 기반 단일 표준 검증/정규화
-│   └── ics_calendar.py    # 갤럭시 캘린더 규격 경량 .ics 생성기
+│   └── ics_calendar.py    # 갤럭시/스마트폰 캘린더 규격 RFC 5545 .ics 생성기
 ├── data/
 │   └── samples/
 │       ├── sample_msg.txt # 입력 테스트용 샘플 문자 파일
