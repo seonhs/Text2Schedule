@@ -60,3 +60,4 @@ def fallback_heuristic_parser(text: str, current_time: str = None) -> list[dict]
         "review_reason": "AI API 미연동으로 기본 규칙에 따라 변환되었습니다."
     }
     return [normalize_schedule_data(raw_item)]
+

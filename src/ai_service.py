@@ -93,3 +93,4 @@ def extract_schedule_from_text(
     except Exception as e:
         print(f"[AI 서비스 알림] Gemini API 호출 중 예외 발생 (Fallback 파서 전환): {e}")
         return fallback_heuristic_parser(text, received_time)
+

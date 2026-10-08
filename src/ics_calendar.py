@@ -41,7 +41,7 @@ def generate_ics_from_schedule(schedules: list[dict], prod_id: str = "-//GALAXY 
         f"PRODID:{prod_id}"
     ]
 
-    for item in schedules:
+    for idx, item in enumerate(schedules, 1):
         start_iso = item.get("start_iso")
         end_iso = item.get("end_iso")
         date_iso = item.get("date_iso")
@@ -49,8 +49,9 @@ def generate_ics_from_schedule(schedules: list[dict], prod_id: str = "-//GALAXY 
         start_dt_str = iso_to_ics_dt(start_iso)
         end_dt_str = iso_to_ics_dt(end_iso)
 
-        # sample_msg.ics와 동일한 UID 식별자 형식 생성
-        uid = f"{now_utc}-1@GALAXY-CALENDAR-EVENT-{uuid.uuid4().hex[:12]}"
+        # sample_msg.ics 규격을 따르면서 UUID v4 난수를 조합하여 전 세계적 및 다중 일정 간 UID 충돌 방지
+        unique_hash = uuid.uuid4().hex[:12]
+        uid = f"{now_utc}-{idx}@GALAXY-CALENDAR-EVENT-{unique_hash}"
 
         lines.append("BEGIN:VEVENT")
         lines.append(f"UID:{uid}")
